@@ -14,19 +14,22 @@ import (
 )
 
 func Upload(context *gin.Context) {
-	fileData, exceptionFile := getFile(context)
+	fileRequest, filenameRequest, size, exceptionFile := getFile(context)
 	if exceptionFile.ErrorCode != 0 {
 		context.AbortWithStatusJSON(exceptionFile.ErrorCode, exceptionFile)
 		return
 	}
-
-	optimizedImage, errOptimizing := utils.OptimizeImage(fileData)
+	if size >= constants.MaxSize {
+		context.AbortWithStatusJSON(http.StatusBadRequest, exceptions.Response{}.
+			Create(http.StatusBadRequest, constants.MaxSizeError))
+	}
+	optimizedImage, filename, errOptimizing := utils.OptimizeImage(fileRequest, filenameRequest)
 	if errOptimizing != nil {
 		context.AbortWithStatusJSON(http.StatusBadRequest, exceptions.Response{}.
 			Create(http.StatusBadRequest, constants.FileProcessingError))
 		return
 	}
-	url, tag, errUploading := gateways.UploadImage(optimizedImage, utils.GenerateNewFilename())
+	url, tag, errUploading := gateways.UploadImage(optimizedImage, filename)
 	if errUploading != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, exceptions.Response{}.
 			Create(http.StatusBadRequest, constants.FileUploadError))
@@ -35,18 +38,18 @@ func Upload(context *gin.Context) {
 	context.JSON(http.StatusOK, mappers.UploadEntityToResponse(url, tag))
 }
 
-func getFile(context *gin.Context) ([]byte, exceptions.Response) {
-	file, _, errGetting := context.Request.FormFile(constants.FormDataKey)
+func getFile(context *gin.Context) ([]byte, string, int64, exceptions.Response) {
+	file, header, errGetting := context.Request.FormFile(constants.FormDataKey)
 	if errGetting != nil {
 		log.Printf("Error getting file from request: %s", errGetting)
-		return []byte{}, exceptions.Response{}.
+		return []byte{}, "", 0, exceptions.Response{}.
 			Create(http.StatusBadRequest, constants.FileNotValid)
 	}
 
 	fileBytes, errReading := io.ReadAll(file)
 	if errReading != nil {
 		log.Printf("Error reading file in buffer: %s", errReading)
-		return []byte{}, exceptions.Response{}.
+		return []byte{}, "", 0, exceptions.Response{}.
 			Create(http.StatusBadRequest, constants.FileProcessingError)
 	}
 
@@ -58,5 +61,5 @@ func getFile(context *gin.Context) ([]byte, exceptions.Response) {
 		}
 	}(file)
 
-	return fileBytes, exceptions.Response{}
+	return fileBytes, header.Filename, header.Size, exceptions.Response{}
 }

@@ -1,6 +1,5 @@
 require (
 	github.com/aws/aws-sdk-go v1.50.20
-	github.com/chai2010/webp v1.1.1
 	github.com/gin-gonic/gin v1.9.1
 )
 
