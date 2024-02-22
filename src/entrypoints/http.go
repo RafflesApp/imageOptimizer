@@ -7,5 +7,5 @@ import (
 
 func SetEntryPoints(api *gin.RouterGroup) {
 	api.GET("/", handlers.WelcomeApi)
-	api.POST("/upload", handlers.Upload)
+	api.POST("/", handlers.Upload)
 }

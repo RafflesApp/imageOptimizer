@@ -19,9 +19,14 @@ func Upload(context *gin.Context) {
 		context.AbortWithStatusJSON(exceptionFile.ErrorCode, exceptionFile)
 		return
 	}
+
+	log.Printf("fileNameRequest: %v", filenameRequest)
+	log.Printf("size: %v", size)
+
 	if size >= constants.MaxSize {
 		context.AbortWithStatusJSON(http.StatusBadRequest, exceptions.Response{}.
 			Create(http.StatusBadRequest, constants.MaxSizeError))
+		return
 	}
 	optimizedImage, filename, errOptimizing := utils.OptimizeImage(fileRequest, filenameRequest)
 	if errOptimizing != nil {
